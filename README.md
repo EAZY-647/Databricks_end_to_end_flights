@@ -63,6 +63,7 @@ This repository contains the following notebooks that define the pipeline:
     * Merges data (Upsert) to handle existing records vs. new records.
     * Joins dimensions to create the final Fact table.
 <img width="1060" height="1730" alt="databricks_gold-layer" src="https://github.com/user-attachments/assets/2f2bf374-2243-44e0-84b2-ad19c4b4fc4c" />
+<img width="2878" height="1695" alt="DBT_accessing the file from databricks" src="https://github.com/user-attachments/assets/597d2871-1e2c-4f49-945b-4a06ddb0169b" />
 
 ## Analytics & Results
 
