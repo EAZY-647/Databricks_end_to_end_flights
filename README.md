@@ -1,76 +1,75 @@
-#  End-to-End Aviation Data Pipeline
+# End-to-End Aviation Data Pipeline
 
-### A Scalable Lakehouse Solution on Databricks
+## Project Overview
 
-## Architecture Diagram
+This project demonstrates a production-ready data engineering solution built on the Databricks Lakehouse Platform. It is designed to ingest high-volume, messy aviation data—including flight logs, passenger manifests, and airport codes—and transform it into a structured Star Schema optimized for high-performance analytics.
 
-<img width="1408" height="752" alt="Gemini_Generated_Image_oipe9loipe9loipe" src="https://github.com/user-attachments/assets/fd662b6d-47cc-4a44-8228-4328ae899bc4" />
+The pipeline addresses a common industry challenge: moving data from raw file storage to business-ready insights while maintaining data quality, lineage, and scalability. It leverages modern Data Engineering practices including incremental ingestion, schema enforcement, and Slowly Changing Dimensions (SCD) modeling.
+
+## Architecture
+<img width="1408" height="752" alt="Gemini_Generated_Image_oipe9loipe9loipe" src="https://github.com/user-attachments/assets/c549ecc9-927f-40c6-abed-b6701ead7701" />
 
 
-##  Project Overview
+The solution follows the Medallion Architecture, dividing data flow into three logical layers to ensure quality and governance.
 
-This project demonstrates a production-ready data engineering pipeline built using the **Databricks Lakehouse Platform**. The goal was to take messy, raw aviation data—simulated flight logs, passenger lists, and airport codes—and transform it into a clean, high-performance **Star Schema** optimized for analytics.
+* 🥉 **Bronze Layer (Raw Ingestion):**
+    This layer handles the intake of raw data from cloud storage. It uses **Databricks Autoloader** (Spark Structured Streaming) to detect new JSON and CSV files as they arrive. This ensures exactly-once processing and automatically handles schema drift, preserving the original raw data for audit purposes.
 
-I built this to solve a common real-world problem: how to ingest data incrementally, clean it reliably, and model it for business intelligence tools like PowerBI or Tableau. The pipeline follows the industry-standard **Medallion Architecture** (Bronze $\rightarrow$ Silver $\rightarrow$ Gold), ensuring that every stage of the data is auditable and high-quality.
+* 🥈 **Silver Layer (Cleaned & Conformed):**
+    Data from the Bronze layer is cleaned and standardized using **Delta Live Tables (DLT)** concepts. Key transformations in this stage include:
+    * **Deduplication:** Removing duplicate records to ensure data integrity.
+    * **Schema Enforcement:** Validating data types (e.g., converting string timestamps to proper timestamp objects).
+    * **Standardization:** Renaming columns from inconsistent formats to snake_case for better readability.
 
-### Key Features
-* **Incremental Ingestion:** Uses Databricks Autoloader to automatically detect and ingest new files as they arrive in cloud storage, preventing data duplication.
-* **Data Quality Enforcement:** The "Silver" layer automatically handles schema drift, deduplicates records, and standardizes formats (e.g., converting timestamps and cleaning column names).
-* **Dimensional Modeling:** The "Gold" layer implements a robust Star Schema with **SCD Type 1** (Slowly Changing Dimensions) logic, built using a custom dynamic Python script to handle upserts and surrogate key generation.
+* 🥇 **Gold Layer (Dimensional Modeling):**
+    The final layer implements a **Star Schema** designed for Business Intelligence tools like PowerBI, Tableau, or dbt.
+    * **Fact Table:** `fact_bookings` contains transactional metrics such as booking amounts and flight references.
+    * **Dimension Tables:** `dim_flights`, `dim_passengers`, and `dim_airports` provide descriptive context.
+    * **SCD Type 1:** The pipeline implements logic to handle updates to dimension attributes, ensuring the data warehouse always reflects the most current state of the business.
 
----
+## Pipeline Visualizations
 
-##  Architecture & Tech Stack
+### Transformation Logic
+The cleaning and processing steps are visualized below. This graph represents the data lineage as it flows from the raw Bronze state through the validation logic of the Silver layer.
 
-The solution is designed to be scalable and fault-tolerant, leveraging the best of modern data engineering tools.
+<img width="2878" height="1692" alt="databricks_dlt_silver layer" src="https://github.com/user-attachments/assets/a3fd89bc-e41f-4b84-b4b5-afeefd30ee9e" />
 
-| Component | Technology Used | Description |
-| :--- | :--- | :--- |
-| **Platform** | Databricks | The unified compute and storage engine. |
-| **Storage** | Delta Lake | Provides ACID transactions, versioning, and time travel on top of the data lake. |
-| **Ingestion** | Spark Structured Streaming | specifically **Autoloader**, for efficient, exactly-once file processing. |
-| **Transformation** | PySpark & Delta Live Tables | For cleaning, joining, and aggregating data at scale. |
-| **Modeling** | Custom Python Builder | A dynamic script I wrote to build Dimension and Fact tables programmatically. |
+## Technical Stack
 
-### Data Flow
-1.  **🥉 Bronze Layer (Raw):** Raw JSON and CSV files are ingested from the landing zone into Delta tables. The schema is inferred automatically, and data is stored in its original state for auditability.
-2.  **🥈 Silver Layer (Cleaned):** Data is cleaned, filtered, and standardized. Null values are handled, and "messy" column names are converted to snake_case for consistency.
-3.  **🥇 Gold Layer (Curated):** The clean data is modeled into a Star Schema.
-    * **Fact Table:** `fact_bookings` (Transactional data linked to dimensions).
-    * **Dimensions:** `dim_flights`, `dim_passengers`, `dim_airports` (Descriptive data with surrogate keys).
+* **Platform:** Databricks Data Intelligence Platform
+* **Storage Format:** Delta Lake (Open source storage layer with ACID transactions)
+* **Compute Engine:** Apache Spark (PySpark & Spark SQL)
+* **Ingestion:** Databricks Autoloader
+* **Orchestration:** Databricks Workflows
+* **Modeling Strategy:** Dimensional Modeling (Star Schema)
 
----
+## Repository Structure
 
-## 📂 Repository Structure
+This repository contains the following notebooks that define the pipeline:
 
-Here is a guide to the files in this repo and what they do:
+1.  **0_project_setup.py** (`setup.ipynb`)
+    Initializes the environment by creating the Unity Catalog infrastructure. It sets up the Catalog, Schemas (databases), and Storage Volumes required for the project.
 
-* **`0_project_setup.py`** *(formerly setup.ipynb)*:
-    * Initializes the project environment.
-    * Creates the necessary Catalog, Schemas (Databases), and Storage Volumes in Unity Catalog.
-    
-* **`1_bronze_ingestion.py`** *(formerly BronzeLayer.ipynb)*:
-    * The ingestion engine. Configures Autoloader to stream data from the volume into Bronze tables (`bronze_flights`, `bronze_bookings`, etc.).
-    
-* **`2_silver_transformation.py`** *(formerly SilverNotebook.ipynb)*:
-    * The transformation logic. Reads from Bronze, applies data quality rules (removing duplicates, formatting dates), and writes to the Silver layer.
-    
-* **`3_gold_dimensional_model.py`** *(formerly GOLD_DIMS.ipynb)*:
-    * **The "Brain" of the project.** This notebook contains a custom-built Dimension Builder function.
-    * Instead of writing repetitive SQL for each dimension, this script dynamically merges new data, generates surrogate keys (`monotonically_increasing_id`), and handles updates (SCD Type 1) for the `flights`, `passengers`, and `airports` dimensions.
-    * It finally joins everything to create the `fact_bookings` table.
+2.  **1_ingest_bronze.py** (`BronzeLayer.ipynb`)
+    Configures the Autoloader streams. It defines the source location for raw files and the target Bronze Delta tables, enabling continuous ingestion.
 
-* **`config.py`** *(formerly SrcParameters.ipynb)*:
-    * A central configuration file holding file paths, table names, and schema definitions to keep the code clean and DRY (Don't Repeat Yourself).
+3.  **2_transform_silver.py** (`SilverNotebook.ipynb`)
+    Contains the core transformation logic. It reads from Bronze tables, applies data quality expectations (constraints), and writes cleaned data to the Silver layer.
 
----
+4.  **3_build_gold_model.py** (`GOLD_DIMS.ipynb`)
+    Implements the dimensional modeling logic. This script features a custom builder pattern that:
+    * Reads clean Silver data.
+    * Generates surrogate keys for dimensions.
+    * Merges data (Upsert) to handle existing records vs. new records.
+    * Joins dimensions to create the final Fact table.
+<img width="1060" height="1730" alt="databricks_gold-layer" src="https://github.com/user-attachments/assets/2f2bf374-2243-44e0-84b2-ad19c4b4fc4c" />
 
-##  Results & Analytics
+## Analytics & Results
 
-The final output is a queryable Data Warehouse. Below is an example of the kind of business insights this pipeline enables.
+The primary goal of this pipeline is to enable analytical reporting. By structuring data into a Fact and Dimension model, we can run complex aggregation queries efficiently.
 
-**Query: Total Revenue by Airline and Departure City**
-*This query joins the Fact table with two Dimensions to aggregate revenue.*
+**Example Business Query:**
+*Analyze total revenue generated by each airline, broken down by departure city.*
 
 ```sql
 SELECT 
@@ -79,8 +78,10 @@ SELECT
     COUNT(b.booking_id) AS Total_Bookings,
     SUM(b.amount) AS Total_Revenue
 FROM workspace.gold.fact_bookings b
-JOIN workspace.gold.dim_flights f ON b.dim_flights_key = f.dim_flights_key
-JOIN workspace.gold.dim_airports a ON b.dim_airports_key = a.dim_airports_key
+JOIN workspace.gold.dim_flights f 
+    ON b.dim_flights_key = f.dim_flights_key
+JOIN workspace.gold.dim_airports a 
+    ON b.dim_airports_key = a.dim_airports_key
 GROUP BY f.airline, a.city
 ORDER BY Total_Revenue DESC
 LIMIT 5;
