@@ -2,7 +2,7 @@
 
 ### A Scalable Lakehouse Solution on Databricks
 
-![Architecture Diagram] 
+##Architecture Diagram
 <img width="1408" height="752" alt="Gemini_Generated_Image_oipe9loipe9loipe" src="https://github.com/user-attachments/assets/fd662b6d-47cc-4a44-8228-4328ae899bc4" />
 
 
